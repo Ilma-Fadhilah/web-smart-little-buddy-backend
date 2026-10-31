@@ -197,20 +197,33 @@
         // =========================================================================
         // 1. PEMETAAN LENGKAP MP3 
         // =========================================================================
-        const AUDIO_MAP = {
+       const AUDIO_MAP = {
             "INTRO": "0021.mp3",  
-            "1": "0001.mp3",           
-            "2": "0002.mp3",           
-            "3": "0003.mp3",           
-            "4": "0004.mp3",           
-            "5": "0005.mp3",           
-            "A": "0006.mp3",           
-            "B": "0007.mp3",           
-            "C": "0008.mp3",           
-            "D": "0009.mp3",           
+            "1": "0001.mp3",            
+            "2": "0002.mp3",            
+            "3": "0003.mp3",            
+            "4": "0004.mp3",            
+            "5": "0005.mp3",            
+            "A": "0006.mp3",            
+            "B": "0007.mp3",            
+            "C": "0008.mp3",            
+            "D": "0009.mp3",            
             "E": "0010.mp3",
-        };
+            
+            // --- 10 Sound Tambahan Mode Mengingat (Kuis) ---
+            "SOAL_1": "0011.mp3",
+            "SOAL_2": "0012.mp3",
+            "SOAL_3": "0013.mp3",
+            "SOAL_4": "0014.mp3",
+            "SOAL_5": "0015.mp3",
+            "SOAL_A": "0016.mp3",
+            "SOAL_B": "0017.mp3",
+            "SOAL_C": "0018.mp3",
+            "SOAL_D": "0019.mp3",
+            "SOAL_E": "0020.mp3",
 
+        };
+        
         let globalAudio = new Audio();
 
         function putarMp3(namaFile) {
@@ -300,16 +313,19 @@
 
             if (key === "SOAL") {
                 if (currentMode === "MENGINGAT") {
-                    putarMp3(AUDIO_MAP["SOAL"]);
                     const daftarTarget = ["1", "2", "3", "4", "5", "A", "B", "C", "D", "E"];
                     targetKuis = daftarTarget[Math.floor(Math.random() * daftarTarget.length)];
+                    
+                    // Memanggil 1 dari 10 sound spesifik yang dideklarasikan di atas
+                    putarMp3(AUDIO_MAP["SOAL_" + targetKuis]);
+                    
                     isKuisAktif = true;
                     document.getElementById("liveDetectedLabel").innerText = "🎯 CARI KARTU: " + targetKuis;
                 } else {
                     putarMp3(AUDIO_MAP["INTRO"]);
                 }
                 setTimeout(() => db.ref("/robot/kondisi").set("STANDBY"), 1000);
-            } 
+            }
             else if (key === "PETUNJUK") {
                 putarMp3(AUDIO_MAP["PETUNJUK"]);
                 setTimeout(() => db.ref("/robot/kondisi").set("STANDBY"), 1000);
