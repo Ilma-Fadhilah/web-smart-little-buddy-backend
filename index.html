@@ -313,14 +313,20 @@
 
             if (key === "SOAL") {
                 if (currentMode === "MENGINGAT") {
+                    // Tahan prediksi AI selama 2 detik agar audio soal berputar sempurna
+                    predictCooldown = true;
+
                     const daftarTarget = ["1", "2", "3", "4", "5", "A", "B", "C", "D", "E"];
                     targetKuis = daftarTarget[Math.floor(Math.random() * daftarTarget.length)];
                     
-                    // Memanggil 1 dari 10 sound spesifik yang dideklarasikan di atas
+                    // Memanggil audio soal spesifik
                     putarMp3(AUDIO_MAP["SOAL_" + targetKuis]);
                     
                     isKuisAktif = true;
                     document.getElementById("liveDetectedLabel").innerText = "🎯 CARI KARTU: " + targetKuis;
+
+                    // Setelah 2 detik (audio soal selesai), baru izinkan kamera AI mendeteksi kartu jawaban
+                    setTimeout(() => { predictCooldown = false; }, 2000);
                 } else {
                     putarMp3(AUDIO_MAP["INTRO"]);
                 }
