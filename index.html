@@ -81,7 +81,7 @@
             
             <!-- KIRI: Logo -->
             <div class="flex items-center gap-3">
-                <div class="relative bg-white p-2.5 rounded-2xl shadow-md flex items-center justify-center cursor-pointer" onclick="putarMp3('001.mp3')">
+                <div class="relative bg-white p-2.5 rounded-2xl shadow-md flex items-center justify-center cursor-pointer" onclick="putarMp3(AUDIO_MAP['INTRO'])">
                     <i data-lucide="crown" class="w-7 h-7 text-posterYellow fill-posterYellow"></i>
                     <i data-lucide="sparkles" class="w-4 h-4 text-posterYellow absolute -top-1 -right-1 animate-pulse"></i>
                 </div>
@@ -158,7 +158,7 @@
                             <span id="accuracyPercent" class="text-posterOrange">0%</span>
                         </div>
                         <div class="w-full bg-blue-100 h-4 rounded-full overflow-hidden p-0.5 border border-blue-200">
-                            <div id="accuracyBar" class="bg-posterOrange h-full w-0% rounded-full transition-all duration-200"></div>
+                            <div id="accuracyBar" class="bg-posterOrange h-full w-0 rounded-full transition-all duration-200"></div>
                         </div>
                     </div>
 
@@ -199,7 +199,7 @@
         // =========================================================================
         // 1. PEMETAAN LENGKAP MP3 
         // =========================================================================
-       const AUDIO_MAP = {
+        const AUDIO_MAP = {
             "INTRO": "0021.mp3",  
             "1": "0001.mp3",            
             "2": "0002.mp3",            
@@ -229,6 +229,7 @@
         let globalAudio = new Audio();
 
         function putarMp3(namaFile) {
+            if (!namaFile) return; // Mencegah error jika file tidak ada
             globalAudio.pause();
             globalAudio.currentTime = 0;
             globalAudio.src = namaFile;
@@ -429,7 +430,7 @@
                     bestClass = prediction[i].className;
                 }
                 
-                // Render teks rincian sesuai permintaan ("angka 1: 1% ke detech gitu")
+                // Render teks rincian sesuai permintaan
                 if (labelContainer.childNodes[i]) {
                     labelContainer.childNodes[i].innerHTML = `
                         <div class="flex flex-col font-black text-posterNavy">
