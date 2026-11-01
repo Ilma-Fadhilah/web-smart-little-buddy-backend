@@ -94,7 +94,7 @@
                 </div>
             </div>
 
-            <!-- KANAN: Toggle Mode Belajar/Kuis -->
+            <!-- KANAN: Toggle Mode Belajar/Pengingat -->
             <div class="flex bg-posterDarkCard p-1.5 rounded-2xl shadow-inner border border-white/20 items-center gap-2">
                 <span id="labelModeBelajar" class="text-xs sm:text-sm font-black text-white px-2 drop-shadow-md transition-all">
                     📚 BELAJAR
@@ -105,8 +105,8 @@
                     <label for="modeToggle" class="toggle-label block overflow-hidden h-7 rounded-full cursor-pointer transition-colors duration-300 shadow-inner border border-white/10"></label>
                 </div>
                 
-                <span id="labelModeMengingat" class="text-xs sm:text-sm font-bold text-blue-300 px-2 transition-all">
-                    🎯 KUIS
+                <span id="labelModePengingat" class="text-xs sm:text-sm font-bold text-blue-300 px-2 transition-all">
+                    🎯 PENGINGAT
                 </span>
             </div>
             
@@ -212,7 +212,7 @@
             "D": "0009.mp3",            
             "E": "0010.mp3",
             
-            // --- 10 Sound Tambahan Mode Mengingat (Kuis) ---
+            // --- 10 Sound Tambahan Mode Pengingat ---
             "SOAL_1": "0011.mp3",
             "SOAL_2": "0012.mp3",
             "SOAL_3": "0013.mp3",
@@ -223,13 +223,16 @@
             "SOAL_C": "0018.mp3",
             "SOAL_D": "0019.mp3",
             "SOAL_E": "0020.mp3",
-
+            
+            // "BENAR": "file_benar.mp3",   // Asumsi ada file jika tidak error di koding awal
+            // "BENAR2": "file_benar2.mp3",
+            // "SALAH": "file_salah.mp3"
         };
         
         let globalAudio = new Audio();
 
         function putarMp3(namaFile) {
-            if (!namaFile) return; // Mencegah error jika file tidak ada
+            if (!namaFile) return;
             globalAudio.pause();
             globalAudio.currentTime = 0;
             globalAudio.src = namaFile;
@@ -263,24 +266,42 @@
         let isKuisAktif = false;
         let predictCooldown = false;
 
+        // Fungsi Baru: Memulai Pertanyaan Secara Otomatis
+        function mulaiPertanyaanPengingat() {
+            if (currentMode !== "PENGINGAT") return; // Cegah berlanjut jika sudah diganti mode
+            
+            predictCooldown = true;
+            const daftarTarget = ["1", "2", "3", "4", "5", "A", "B", "C", "D", "E"];
+            targetKuis = daftarTarget[Math.floor(Math.random() * daftarTarget.length)];
+            
+            // Putar audio soal
+            putarMp3(AUDIO_MAP["SOAL_" + targetKuis]);
+            
+            isKuisAktif = true;
+            document.getElementById("liveDetectedLabel").innerText = "🎯 CARI KARTU: " + targetKuis;
+
+            // Beri jeda 2.5 detik untuk memutar soal sebelum mendeteksi jawaban
+            setTimeout(() => { predictCooldown = false; }, 2500);
+        }
+
         function switchMode() {
             const toggle = document.getElementById('modeToggle');
             const labelBelajar = document.getElementById('labelModeBelajar');
-            const labelMengingat = document.getElementById('labelModeMengingat');
+            const labelPengingat = document.getElementById('labelModePengingat');
             const detectionLabel = document.getElementById('liveDetectedLabel');
             
             const appBody = document.getElementById('appBody');
             const appHeader = document.getElementById('appHeader');
 
             if (toggle.checked) {
-                currentMode = "MENGINGAT";
-                db.ref("/robot/mode").set("MENGINGAT"); 
+                currentMode = "PENGINGAT";
+                db.ref("/robot/mode").set("PENGINGAT"); 
                 
                 labelBelajar.className = "text-xs sm:text-sm font-bold text-blue-300 px-2 transition-all";
-                labelMengingat.className = "text-xs sm:text-sm font-black text-white px-2 drop-shadow-md transition-all";
+                labelPengingat.className = "text-xs sm:text-sm font-black text-white px-2 drop-shadow-md transition-all";
                 
-                putarMp3(AUDIO_MAP["MODE_ANGKA"]); 
-                detectionLabel.innerText = "🎯 KUIS: Sentuh Kepala Robot!";
+                if(AUDIO_MAP["MODE_ANGKA"]) putarMp3(AUDIO_MAP["MODE_ANGKA"]); 
+                detectionLabel.innerText = "🎯 PENGINGAT: Bersiap...";
                 detectionLabel.parentElement.className = "hidden absolute top-4 left-4 bg-posterNavy text-posterYellow font-black text-xs sm:text-sm px-4 py-2 rounded-2xl shadow-lg border-2 border-posterYellow transition-all z-10";
                 if(isCameraOn) detectionLabel.parentElement.classList.remove('hidden');
                 
@@ -288,12 +309,15 @@
                 appHeader.classList.replace('bg-[#5c9ecf]', 'bg-[#3f6b97]');
                 appHeader.classList.replace('border-white/60', 'border-posterYellow');
                 
+                // Otomatis memulai pertanyaan pengingat setelah 2 detik
+                setTimeout(mulaiPertanyaanPengingat, 2000);
+                
             } else {
                 currentMode = "BELAJAR";
                 db.ref("/robot/mode").set("BELAJAR");
                 
                 labelBelajar.className = "text-xs sm:text-sm font-black text-white px-2 drop-shadow-md transition-all";
-                labelMengingat.className = "text-xs sm:text-sm font-bold text-blue-300 px-2 transition-all";
+                labelPengingat.className = "text-xs sm:text-sm font-bold text-blue-300 px-2 transition-all";
                 
                 isKuisAktif = false;
                 detectionLabel.innerText = "📚 MODE BELAJAR AKTIF";
@@ -306,7 +330,7 @@
             }
         }
 
-        // ESP32 Listener
+        // ESP32 Listener (Kewajiban sensor kepala DIBUANG)
         refKondisi.on('value', (snapshot) => {
             const val = snapshot.val();
             if (!val) return;
@@ -314,28 +338,7 @@
             const key = String(val).toUpperCase().trim();
             if (key === "STANDBY") return;
 
-            if (key === "SOAL") {
-                if (currentMode === "MENGINGAT") {
-                    // Tahan prediksi AI selama 2 detik agar audio soal berputar sempurna
-                    predictCooldown = true;
-
-                    const daftarTarget = ["1", "2", "3", "4", "5", "A", "B", "C", "D", "E"];
-                    targetKuis = daftarTarget[Math.floor(Math.random() * daftarTarget.length)];
-                    
-                    // Memanggil audio soal spesifik
-                    putarMp3(AUDIO_MAP["SOAL_" + targetKuis]);
-                    
-                    isKuisAktif = true;
-                    document.getElementById("liveDetectedLabel").innerText = "🎯 CARI KARTU: " + targetKuis;
-
-                    // Setelah 2 detik (audio soal selesai), baru izinkan kamera AI mendeteksi kartu jawaban
-                    setTimeout(() => { predictCooldown = false; }, 2000);
-                } else {
-                    putarMp3(AUDIO_MAP["INTRO"]);
-                }
-                setTimeout(() => db.ref("/robot/kondisi").set("STANDBY"), 1000);
-            }
-            else if (key === "PETUNJUK") {
+            if (key === "PETUNJUK") {
                 putarMp3(AUDIO_MAP["PETUNJUK"]);
                 setTimeout(() => db.ref("/robot/kondisi").set("STANDBY"), 1000);
             }
@@ -349,7 +352,7 @@
         let lastSyncedClass = "";
 
         async function initTeachableMachine() {
-            if (isCameraOn) return; // Mencegah double klik init
+            if (isCameraOn) return; 
             
             putarMp3(AUDIO_MAP["INTRO"]);
 
@@ -364,7 +367,6 @@
                 model = await tmImage.load(modelURLInput + "model.json", modelURLInput + "metadata.json");
                 maxPredictions = model.getTotalClasses();
                 
-                // Gunakan resolusi proporsional untuk webcam
                 webcam = new tmImage.Webcam(640, 480, true); 
                 await webcam.setup(); 
                 await webcam.play();
@@ -379,7 +381,6 @@
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = "";
                 
-                // Siapkan template rincian kartu
                 for (let i = 0; i < maxPredictions; i++) {
                     const classCard = document.createElement("div");
                     classCard.className = "bg-white p-3 rounded-2xl border-2 border-blue-100 shadow-sm transition-all";
@@ -389,7 +390,6 @@
                 document.getElementById('liveDetectionBox').classList.remove('hidden');
                 statusBox.innerText = "Model AI Berhasil Dimuat!";
                 
-                // Mulai looping secara independen dan anti-freeze
                 window.requestAnimationFrame(loop);
                 
             } catch (err) {
@@ -399,13 +399,12 @@
             }
         }
 
-        // Dibuat lebih stabil agar requestAnimationFrame tidak tertahan proses predict()
         async function loop() {
             if (!isCameraOn) return;
             
             try {
-                webcam.update(); // Panggil gambar kamera terbaru
-                await predict(); // Prediksi menggunakan gambar tadi
+                webcam.update();
+                await predict(); 
             } catch (err) {
                 console.error("Kesalahan saat prediksi/kamera:", err);
             }
@@ -424,13 +423,11 @@
                 let probValue = prediction[i].probability;
                 let probPercent = (probValue * 100).toFixed(0);
                 
-                // Hitung kemungkinan tertinggi
                 if (probValue > highestProb) {
                     highestProb = probValue;
                     bestClass = prediction[i].className;
                 }
                 
-                // Render teks rincian sesuai permintaan
                 if (labelContainer.childNodes[i]) {
                     labelContainer.childNodes[i].innerHTML = `
                         <div class="flex flex-col font-black text-posterNavy">
@@ -449,12 +446,10 @@
                 }
             }
 
-            // Render akurasi terbaik di panel samping
             const mainProbPercent = (highestProb * 100).toFixed(0);
             document.getElementById('accuracyPercent').innerText = `${mainProbPercent}%`;
             document.getElementById('accuracyBar').style.width = `${mainProbPercent}%`;
 
-            // Mencegah tembakan data berulang ke Firebase
             if (highestProb > 0.85 && !predictCooldown) {
                 
                 if (currentMode === "BELAJAR" && bestClass !== lastSyncedClass) {
@@ -468,7 +463,7 @@
 
                     setTimeout(() => { predictCooldown = false; }, 2000);
                 } 
-                else if (currentMode === "MENGINGAT" && isKuisAktif) {
+                else if (currentMode === "PENGINGAT" && isKuisAktif) {
                     predictCooldown = true;
                     
                     if (bestClass === targetKuis) {
@@ -478,24 +473,30 @@
                         
                         document.getElementById('liveDetectedLabel').innerText = `🎉 Yey Benar! Itu ${bestClass}`;
                         isKuisAktif = false;
+
+                        // OTOMATIS LANJUT KE SOAL BERIKUTNYA SETELAH 3 DETIK 
+                        setTimeout(() => { 
+                            mulaiPertanyaanPengingat(); 
+                        }, 3500);
+
                     } else {
                         db.ref("/robot/kondisi").set("SALAH");
                         putarMp3(AUDIO_MAP["SALAH"]);
                         
-                        document.getElementById('liveDetectedLabel').innerText = `❌ Salah! Itu ${bestClass}`;
-                    }
+                        document.getElementById('liveDetectedLabel').innerText = `❌ Salah! Coba lagi cari: ${targetKuis}`;
 
-                    setTimeout(() => { 
-                        predictCooldown = false; 
-                        if(isKuisAktif) document.getElementById('liveDetectedLabel').innerText = "🎯 CARI KARTU: " + targetKuis;
-                    }, 2500);
+                        setTimeout(() => { 
+                            predictCooldown = false; 
+                            if(isKuisAktif) document.getElementById('liveDetectedLabel').innerText = "🎯 CARI KARTU: " + targetKuis;
+                        }, 2500);
+                    }
                 }
             }
         }
 
         function stopCamera() {
             if (webcam && isCameraOn) {
-                putarMp3(AUDIO_MAP["SELESAI"]);
+                if(AUDIO_MAP["SELESAI"]) putarMp3(AUDIO_MAP["SELESAI"]);
                 webcam.stop();
                 isCameraOn = false;
                 
@@ -503,7 +504,6 @@
                 document.getElementById('placeholderView').classList.remove('hidden');
                 document.getElementById('liveDetectionBox').classList.add('hidden');
                 
-                // Reset progress UI
                 document.getElementById('accuracyPercent').innerText = `0%`;
                 document.getElementById('accuracyBar').style.width = `0%`;
                 
